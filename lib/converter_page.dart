@@ -20,7 +20,7 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
 
   Future<void> fetchExchangeRates() async {
     final url =
-        "https://v6.exchangerate-api.com/v6/fcdf87381720a471b4127745/latest/USD"; // Using USD as base currency
+        "https://v6.exchangerate-api.com/v6/0b787beced942186881bb4f2/latest/USD";
     final response = await http.get(Uri.parse(url));
 
     if (response.statusCode == 200) {

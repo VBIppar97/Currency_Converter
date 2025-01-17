@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import 'api_services.dart';
 
 class CurrencyConverter extends StatefulWidget {
   const CurrencyConverter({super.key});
@@ -16,21 +15,22 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
   double? _conversionResult;
   Map<String, dynamic>? _exchangeRates;
   List<String> _filteredCurrencies = [];
-  String _searchQuery = '';
 
-  Future<void> fetchExchangeRates() async {
-    final url =
-        "https://v6.exchangerate-api.com/v6/0b787beced942186881bb4f2/latest/USD";
-    final response = await http.get(Uri.parse(url));
+  @override
+  void initState() {
+    super.initState();
+    _initializeExchangeRates();
+  }
 
-    if (response.statusCode == 200) {
+  Future<void> _initializeExchangeRates() async {
+    try {
+      final rates = await ApiService.fetchExchangeRates();
       setState(() {
-        _exchangeRates = json.decode(response.body)['conversion_rates'];
-        _filteredCurrencies =
-            _exchangeRates!.keys.toList(); // Initialize filtered list
+        _exchangeRates = rates;
+        _filteredCurrencies = rates.keys.toList();
       });
-    } else {
-      throw Exception("Failed to load exchange rates");
+    } catch (e) {
+      print(e);
     }
   }
 
@@ -45,22 +45,6 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
     setState(() {
       _conversionResult = amount * rate;
     });
-  }
-
-  void _filterCurrencies(String query) {
-    setState(() {
-      _searchQuery = query;
-      _filteredCurrencies = _exchangeRates!.keys
-          .where((currency) =>
-              currency.toLowerCase().contains(query.toLowerCase()))
-          .toList();
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchExchangeRates();
   }
 
   String _getFlagUrl(String currencyCode) {
@@ -115,10 +99,34 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
               const SizedBox(height: 16),
               Row(
                 children: [
+                  // "From" Dropdown on the left
                   Expanded(
-                    child: _buildSearchableDropdown(
-                      hint: 'From',
-                      selectedValue: _fromCurrency,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _fromCurrency,
+                      hint: const Text("From"),
+                      decoration: const InputDecoration(
+                        labelText: 'Select From Currency',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _filteredCurrencies.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Row(
+                            children: [
+                              Image.network(
+                                _getFlagUrl(currency),
+                                width: 30,
+                                height: 20,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.flag),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(currency),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                       onChanged: (value) {
                         setState(() {
                           _fromCurrency = value;
@@ -126,11 +134,36 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
                       },
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 16), // Spacing between dropdowns
+
+                  // "To" Dropdown on the right
                   Expanded(
-                    child: _buildSearchableDropdown(
-                      hint: 'To',
-                      selectedValue: _toCurrency,
+                    child: DropdownButtonFormField<String>(
+                      isExpanded: true,
+                      value: _toCurrency,
+                      hint: const Text("To"),
+                      decoration: const InputDecoration(
+                        labelText: 'Select From Currency',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: _filteredCurrencies.map((currency) {
+                        return DropdownMenuItem(
+                          value: currency,
+                          child: Row(
+                            children: [
+                              Image.network(
+                                _getFlagUrl(currency),
+                                width: 30,
+                                height: 20,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    const Icon(Icons.flag),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(currency),
+                            ],
+                          ),
+                        );
+                      }).toList(),
                       onChanged: (value) {
                         setState(() {
                           _toCurrency = value;
@@ -156,56 +189,6 @@ class _CurrencyConverterState extends State<CurrencyConverter> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildSearchableDropdown({
-    required String hint,
-    String? selectedValue,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        TextField(
-          onChanged: _filterCurrencies,
-          decoration: InputDecoration(
-            labelText: hint,
-            border: OutlineInputBorder(),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: DropdownButton<String>(
-            isExpanded: true,
-            value: selectedValue,
-            hint: Text("Select $hint"),
-            items: _filteredCurrencies.map((String currency) {
-              return DropdownMenuItem(
-                value: currency,
-                child: Row(
-                  children: [
-                    Image.network(
-                      _getFlagUrl(currency),
-                      width: 30,
-                      height: 20,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Icon(Icons.flag),
-                    ),
-                    const SizedBox(width: 10),
-                    Text(currency),
-                  ],
-                ),
-              );
-            }).toList(),
-            onChanged: onChanged,
-          ),
-        ),
-      ],
     );
   }
 }
